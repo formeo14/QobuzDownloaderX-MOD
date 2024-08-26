@@ -1,4 +1,7 @@
-﻿using PlaylistsNET.Content;
+﻿using DownloadAssistant.Base;
+using DownloadAssistant.Options;
+using DownloadAssistant.Requests;
+using PlaylistsNET.Content;
 using PlaylistsNET.Models;
 using QobuzApiSharp.Exceptions;
 using QobuzApiSharp.Models.Content;
@@ -45,6 +48,7 @@ namespace QobuzDownloaderX.Shared
             this.logger = logger;
             UpdateUiDownloadSpeed = updateUiDownloadSpeed;
             UpdateAlbumUiTags = updateAlbumTagsUi;
+            HttpGet.HttpClient.DefaultRequestHeaders.UserAgent.ParseAdd(Globals.USER_AGENT);
         }
 
         private T ExecuteApiCall<T>(Func<QobuzApiService, T> apiCall)
@@ -56,7 +60,7 @@ namespace QobuzDownloaderX.Shared
             catch (Exception ex)
             {
                 // If connection to API fails, or something is incorrect, show error info + log details.
-                List<string> errorLines = new List<string>();
+                List<string> errorLines = new();
 
                 logger.AddEmptyDownloadLogLine(false, true);
                 logger.AddDownloadLogErrorLine($"Communication problem with Qobuz API. Details saved to error log{Environment.NewLine}", true, true);
@@ -209,6 +213,7 @@ namespace QobuzDownloaderX.Shared
             DownloadPaths.FullTrackFileName = DownloadPaths.FinalTrackNamePath + Globals.AudioFileType;
             DownloadPaths.FullTrackFilePath = Path.Combine(trackPath, DownloadPaths.FullTrackFileName);
 
+
             // Check if the file already exists
             if (System.IO.File.Exists(DownloadPaths.FullTrackFilePath))
             {
@@ -236,42 +241,47 @@ namespace QobuzDownloaderX.Shared
                 string coverArtFilePath = Path.Combine(DownloadPaths.Path3Full, "Cover.jpg");
                 string coverArtTagFilePath = Path.Combine(DownloadPaths.Path3Full, Globals.TaggingOptions.ArtSize + ".jpg");
 
-                using (HttpClient httpClient = new HttpClient())
+
+                // Save streamed file from link
+                // await DownloadFileAsync(, streamUrl, DownloadPaths.FullTrackFilePath);
+                var options = new GetRequestOptions()
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", Globals.USER_AGENT);
+                    IsDownload = true,
+                    DirectoryPath = trackPath,
+                    Filename = DownloadPaths.FullTrackFileName,
+                    NumberOfAttempts = 1,
+                    RequestFailed = (req, _) => logger.AddDownloadErrorLogLines(new string[] { "Error downloading image file for tagging.", req.Exception.Message, Environment.NewLine })
+                };
+                await new GetRequest(streamUrl, options).Task;
 
-                    // Save streamed file from link
-                    await DownloadFileAsync(httpClient, streamUrl, DownloadPaths.FullTrackFilePath);
+                // Download selected cover art size for tagging files (if not exists)
+                if (!System.IO.File.Exists(coverArtTagFilePath))
+                {
 
-                    // Download selected cover art size for tagging files (if not exists)
-                    if (!System.IO.File.Exists(coverArtTagFilePath))
+                    options = new GetRequestOptions()
                     {
-                        try
-                        {
-                            await DownloadFileAsync(httpClient, DownloadInfo.FrontCoverImgTagUrl, coverArtTagFilePath);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Qobuz servers throw a 404 as if the image doesn't exist.
-                            logger.AddDownloadErrorLogLines(new string[] { "Error downloading image file for tagging.", ex.Message, Environment.NewLine });
-                        }
-                    }
-
-                    // Download max quality Cover Art to "Cover.jpg" file in chosen path (if not exists & not part of playlist).
-                    if (!isPartOfTracklist && !System.IO.File.Exists(coverArtFilePath))
-                    {
-                        try
-                        {
-                            await DownloadFileAsync(httpClient, DownloadInfo.FrontCoverImgUrl, coverArtFilePath);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Qobuz servers throw a 404 as if the image doesn't exist.
-                            logger.AddDownloadErrorLogLines(new string[] { "Error downloading full size cover image file.", ex.Message, Environment.NewLine });
-                        }
-                    }
+                        IsDownload = true,
+                        DirectoryPath = DownloadPaths.Path3Full,
+                        Filename = Globals.TaggingOptions.ArtSize + ".jpg",
+                        NumberOfAttempts = 1,
+                        RequestFailed = (req, _) => logger.AddDownloadErrorLogLines(new string[] { "Error downloading image file for tagging.", req.Exception.Message, Environment.NewLine })
+                    };
+                    await new GetRequest(DownloadInfo.FrontCoverImgTagUrl, options).Task;
                 }
 
+                // Download max quality Cover Art to "Cover.jpg" file in chosen path (if not exists & not part of playlist).
+                if (!isPartOfTracklist && !System.IO.File.Exists(coverArtFilePath))
+                {
+                    options = new GetRequestOptions()
+                    {
+                        IsDownload = true,
+                        DirectoryPath = DownloadPaths.Path3Full,
+                        Filename = "Cover.jpg",
+                        NumberOfAttempts = 1,
+                        RequestFailed = (req, _) => logger.AddDownloadErrorLogLines(new string[] { "Error downloading full size cover image file.", req.Exception.Message, Environment.NewLine })
+                    };
+                    await new GetRequest(DownloadInfo.FrontCoverImgUrl, options).Task;
+                }
                 // Tag metadata to downloaded track.
                 AudioFileTagger.AddMetaDataTags(DownloadInfo, DownloadPaths.FullTrackFilePath, coverArtTagFilePath, logger);
 
@@ -383,7 +393,7 @@ namespace QobuzDownloaderX.Shared
 
             logger.AddDownloadLogLine($"Goodies found, downloading...{Environment.NewLine}", true, true);
 
-            using (HttpClient httpClient = new HttpClient())
+            using (HttpClient httpClient = new())
             {
                 int counter = 1;
 
@@ -547,95 +557,88 @@ namespace QobuzDownloaderX.Shared
             return noErrorsOccured;
         }
 
-        public async Task StartDownloadItemTaskAsync(DownloadItem downloadItem, DownloadTaskStatusChanged downloadStartedCallback, DownloadTaskStatusChanged downloadStoppedCallback)
+        public async Task<bool> StartDownloadItemTaskAsync(DownloadItem downloadItem, CancellationToken token)
         {
-            // Create new cancellation token source.
-            using (this.cancellationTokenSource = new CancellationTokenSource())
+            try
             {
-                IsBuzy = true;
 
-                try
+                // Link should be valid here, start new download log
+                logger.DownloadLogPath = Path.Combine(Globals.LoggingDir, $"Download_Log_Item_{downloadItem.Id}_Time_{DateTime.Now:yyyy-MM-dd_HH.mm.ss.fff}.log");
+
+                string logLine = $"Downloading <{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(downloadItem.Type)}> from {downloadItem.Url}";
+                logger.AddDownloadLogLine(new string('=', logLine.Length).PadRight(logLine.Length), true);
+                logger.AddDownloadLogLine(logLine, true);
+                logger.AddDownloadLogLine(new string('=', logLine.Length).PadRight(logLine.Length), true);
+                logger.AddEmptyDownloadLogLine(true);
+
+                DownloadInfo = new DownloadItemInfo
                 {
-                    downloadStartedCallback?.Invoke();
+                    DownloadItemID = downloadItem.Id
+                };
+                DownloadPaths = DownloadInfo.CurrentDownloadPaths;
 
-                    // Link should be valid here, start new download log
-                    logger.DownloadLogPath = Path.Combine(Globals.LoggingDir, $"Download_Log_{DateTime.Now:yyyy-MM-dd_HH.mm.ss.fff}.log");
+                switch (downloadItem.Type)
+                {
+                    case "track":
+                        await StartDownloadTrackTaskAsync(token);
+                        break;
+                    case "album":
+                        await StartDownloadAlbumTaskAsync(token);
+                        break;
 
-                    string logLine = $"Downloading <{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(downloadItem.Type)}> from {downloadItem.Url}";
-                    logger.AddDownloadLogLine(new string('=', logLine.Length).PadRight(logLine.Length), true);
-                    logger.AddDownloadLogLine(logLine, true);
-                    logger.AddDownloadLogLine(new string('=', logLine.Length).PadRight(logLine.Length), true);
-                    logger.AddEmptyDownloadLogLine(true);
+                    case "artist":
+                        await StartDownloadArtistDiscogTaskAsync(token);
+                        break;
 
-                    DownloadInfo = new DownloadItemInfo
-                    {
-                        DownloadItemID = downloadItem.Id
-                    };
-                    DownloadPaths = DownloadInfo.CurrentDownloadPaths;
+                    case "label":
+                        await StartDownloadLabelTaskAsync(token);
+                        break;
 
-                    switch (downloadItem.Type)
-                    {
-                        case "track":
-                            await StartDownloadTrackTaskAsync(cancellationTokenSource.Token);
-                            break;
-                        case "album":
-                            await StartDownloadAlbumTaskAsync(cancellationTokenSource.Token);
-                            break;
-
-                        case "artist":
-                            await StartDownloadArtistDiscogTaskAsync(cancellationTokenSource.Token);
-                            break;
-
-                        case "label":
-                            await StartDownloadLabelTaskAsync(cancellationTokenSource.Token);
-                            break;
-
-                        case "user":
-                            if (DownloadInfo.DownloadItemID == @"library/favorites/albums")
-                            {
-                                await StartDownloadFaveAlbumsTaskAsync(cancellationTokenSource.Token);
-                            }
-                            else if (DownloadInfo.DownloadItemID == @"library/favorites/artists")
-                            {
-                                await StartDownloadFaveArtistsTaskAsync(cancellationTokenSource.Token);
-                            }
-                            else if (DownloadInfo.DownloadItemID == @"library/favorites/tracks")
-                            {
-                                await StartDownloadFaveTracksTaskAsync(cancellationTokenSource.Token);
-                            }
-                            else
-                            {
-                                logger.ClearUiLogComponent();
-                                logger.AddDownloadLogLine($"You entered an invalid user favorites link.{Environment.NewLine}", true, true);
-                                logger.AddDownloadLogLine($"Favorite Tracks, Albums & Artists are supported with the following links:{Environment.NewLine}", true, true);
-                                logger.AddDownloadLogLine($"Tracks - https://play.qobuz.com/user/library/favorites/tracks{Environment.NewLine}", true, true);
-                                logger.AddDownloadLogLine($"Albums - https://play.qobuz.com/user/library/favorites/albums{Environment.NewLine}", true, true);
-                                logger.AddDownloadLogLine($"Artists - https://play.qobuz.com/user/library/favorites/artists{Environment.NewLine}", true, true);
-                            }
-                            break;
-
-                        case "playlist":
-                            await StartDownloadPlaylistTaskAsync(cancellationTokenSource.Token);
-                            break;
-                        default:
-                            // We shouldn't get here?!? I'll leave this here just in case...
+                    case "user":
+                        if (DownloadInfo.DownloadItemID == @"library/favorites/albums")
+                        {
+                            await StartDownloadFaveAlbumsTaskAsync(token);
+                        }
+                        else if (DownloadInfo.DownloadItemID == @"library/favorites/artists")
+                        {
+                            await StartDownloadFaveArtistsTaskAsync(token);
+                        }
+                        else if (DownloadInfo.DownloadItemID == @"library/favorites/tracks")
+                        {
+                            await StartDownloadFaveTracksTaskAsync(token);
+                        }
+                        else
+                        {
                             logger.ClearUiLogComponent();
-                            logger.AddDownloadLogLine("URL not understood. Is there a typo?", true, true);
-                            break;
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // Handle cancellation.
-                    logger.AddEmptyDownloadLogLine(true, true);
-                    logger.AddDownloadLogLine("Download stopped by user!", true, true);
-                }
-                finally
-                {
-                    downloadStoppedCallback?.Invoke();
-                    IsBuzy = false;
+                            logger.AddDownloadLogLine($"You entered an invalid user favorites link.{Environment.NewLine}", true, true);
+                            logger.AddDownloadLogLine($"Favorite Tracks, Albums & Artists are supported with the following links:{Environment.NewLine}", true, true);
+                            logger.AddDownloadLogLine($"Tracks - https://play.qobuz.com/user/library/favorites/tracks{Environment.NewLine}", true, true);
+                            logger.AddDownloadLogLine($"Albums - https://play.qobuz.com/user/library/favorites/albums{Environment.NewLine}", true, true);
+                            logger.AddDownloadLogLine($"Artists - https://play.qobuz.com/user/library/favorites/artists{Environment.NewLine}", true, true);
+                        }
+                        break;
+
+                    case "playlist":
+                        await StartDownloadPlaylistTaskAsync(cancellationTokenSource.Token);
+                        break;
+                    default:
+                        // We shouldn't get here?!? I'll leave this here just in case...
+                        logger.ClearUiLogComponent();
+                        logger.AddDownloadLogLine("URL not understood. Is there a typo?", true, true);
+                        break;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // Handle cancellation.
+                logger.AddEmptyDownloadLogLine(true, true);
+                logger.AddDownloadLogLine("Download stopped by user!", true, true);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
         }
 
         // For downloading "track" links
@@ -760,7 +763,7 @@ namespace QobuzDownloaderX.Shared
             {
                 // Initialise full Album list
                 QobuzApiSharp.Models.Content.Label qobuzLabel = null;
-                List<Album> labelAlbums = new List<Album>();
+                List<Album> labelAlbums = new();
                 const int albumLimit = 500;
                 int albumsOffset = 0;
 
@@ -825,7 +828,7 @@ namespace QobuzDownloaderX.Shared
             try
             {
                 // Initialise full Album list
-                List<Album> favoriteAlbums = new List<Album>();
+                List<Album> favoriteAlbums = new();
                 const int albumLimit = 500;
                 int albumsOffset = 0;
 
@@ -1031,7 +1034,7 @@ namespace QobuzDownloaderX.Shared
                 {
                     try
                     {
-                        using (WebClient imgClient = new WebClient())
+                        using (WebClient imgClient = new())
                         {
                             imgClient.DownloadFile(new Uri(qobuzPlaylist.ImageRectangle.FirstOrDefault<string>()), coverArtFilePath);
                         }
@@ -1046,7 +1049,7 @@ namespace QobuzDownloaderX.Shared
                 bool noTrackErrorsOccured = true;
 
                 // Start new m3u Playlist file.
-                M3uPlaylist m3uPlaylist = new M3uPlaylist();
+                M3uPlaylist m3uPlaylist = new();
                 m3uPlaylist.IsExtended = true;
 
                 // Download Playlist tracks

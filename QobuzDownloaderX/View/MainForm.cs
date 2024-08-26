@@ -2,6 +2,8 @@
 using QobuzDownloaderX.Properties;
 using QobuzDownloaderX.Shared;
 using QobuzDownloaderX.View;
+using Requests;
+using Requests.Options;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -78,7 +80,8 @@ namespace QobuzDownloaderX
                 output.Invoke(new Action(() => output.AppendText("Active Family sub-account, unknown End Date \r\n")));
                 output.Invoke(new Action(() => output.AppendText("Credential Label - " + Globals.Login.User.Credential.Label + "\r\n")));
                 output.Invoke(new Action(() => output.AppendText("==========================\r\n\r\n")));
-            } else
+            }
+            else
             {
                 output.Invoke(new Action(() => output.AppendText("No active subscriptions, only sample downloads possible!\r\n")));
                 output.Invoke(new Action(() => output.AppendText("==========================\r\n\r\n")));
@@ -228,7 +231,8 @@ namespace QobuzDownloaderX
             if (!downloadManager.IsBuzy)
             {
                 await StartLinkItemDownloadAsync(downloadUrl.Text);
-            } else
+            }
+            else
             {
                 downloadManager.StopDownloadTask();
             }
@@ -273,8 +277,16 @@ namespace QobuzDownloaderX
                 return;
             }
 
+            var options = new RequestOptions<VoidStruct, VoidStruct>()
+            {
+                Handler = RequestHandler.MainRequestHandlers[0],
+                RequestStarted = (_) => UpdateControlsDownloadStart(),
+                RequestCancelled = (_) => UpdateControlsDownloadEnd(),
+                RequestFailed = (_, _) => UpdateControlsDownloadEnd(),
+                RequestCompleated = (_, _) => UpdateControlsDownloadEnd(),
+            };
             // Run the StartDownloadItemTaskAsync method on a background thread & Wait for the task to complete
-            await Task.Run(() => downloadManager.StartDownloadItemTaskAsync(downloadItem, UpdateControlsDownloadStart, UpdateControlsDownloadEnd));
+            await new OwnRequest((token) => downloadManager.StartDownloadItemTaskAsync(downloadItem, token), options).Task;
         }
 
         public void UpdateControlsDownloadStart()
@@ -289,7 +301,8 @@ namespace QobuzDownloaderX
             selectFolderButton.Invoke(new Action(() => selectFolderButton.Enabled = false));
             openSearchButton.Invoke(new Action(() => openSearchButton.Enabled = false));
 
-            downloadButton.Invoke(new Action(() => {
+            downloadButton.Invoke(new Action(() =>
+            {
                 downloadButton.Text = "Stop Download";
                 downloadButton.BackColor = BuzyButtonBackColor;
             }));
@@ -307,7 +320,8 @@ namespace QobuzDownloaderX
             selectFolderButton.Invoke(new Action(() => selectFolderButton.Enabled = true));
             openSearchButton.Invoke(new Action(() => openSearchButton.Enabled = true));
 
-            downloadButton.Invoke(new Action(() => {
+            downloadButton.Invoke(new Action(() =>
+            {
                 downloadButton.Text = "Download";
                 downloadButton.BackColor = ReadyButtonBackColor;
             }));
@@ -315,7 +329,7 @@ namespace QobuzDownloaderX
 
         private void SelectFolder_Click(object sender, EventArgs e)
         {
-            Thread t = new Thread((ThreadStart)(() =>
+            Thread t = new((ThreadStart)(() =>
             {
                 // Open Folder Browser to select path & Save the selection
                 folderBrowserDialog.ShowDialog();
