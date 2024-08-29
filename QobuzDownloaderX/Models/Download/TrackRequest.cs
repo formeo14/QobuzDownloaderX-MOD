@@ -160,13 +160,19 @@ namespace QobuzDownloaderX.Models.Download
                 _logger.AddDownloadLogLine($"Couldn't get streaming URL for Track \"{_downloadPaths.FinalTrackNamePath}\". Skipping.\r\n", true, true);
                 return ReturnFail();
             }
-            _requestContainer.Add(DownloadTrackFile(streamUrl, trackPath));
-
             if (DownloadCoverArt(isPartOfTracklist) is GetRequest getReq)
                 _requestContainer.Add(getReq);
 
+            _requestContainer.Add(DownloadTrackFile(streamUrl, trackPath));
+
+
+
             if (removeTagArtFileAfterDownload)
-                RemoveTempTaggingArtFile();
+            {
+                Notify<IRequest, DownloadItem> x = (_, _) => RemoveTempTaggingArtFile();
+                Options.RequestCompleated = (Notify<IRequest, DownloadItem>)(Delegate.Combine(Options.RequestCompleated, x));
+            }
+
 
             return true;
         }
@@ -184,8 +190,6 @@ namespace QobuzDownloaderX.Models.Download
                 _logger.AddDownloadLogLine($"File for \"{_downloadPaths.FinalTrackNamePath}\" already exists. Skipping.\r\n", true, true);
                 return false;
             }
-
-            _logger.AddDownloadLogLine($"Downloading - {_downloadPaths.FinalTrackNamePath} ...... \r\n", true, true);
             return true;
         }
 
@@ -195,11 +199,12 @@ namespace QobuzDownloaderX.Models.Download
             DirectoryPath = trackPath,
             Filename = _downloadPaths.FullTrackFileName,
             NumberOfAttempts = 3,
+            RequestStarted = (req) => _logger.AddDownloadLogLine($"Start Downloading - {((GetRequest)req).Filename} ...... \r\n", true, true),
             RequestCompleated = (req, _) =>
             {
-                string coverArtTagFilePath = Path.Combine(_downloadPaths.Path3Full, Globals.TaggingOptions.ArtSize + ".jpg");
-                AudioFileTagger.AddMetaDataTags(_downloadInfo, (req as GetRequest).FilePath, coverArtTagFilePath, _logger);
-                Debug.WriteLine("Finsiehd");
+                string coverArtTagFilePath = Path.Combine(trackPath, Globals.TaggingOptions.ArtSize + ".jpg");
+                AudioFileTagger.AddMetaDataTags(_downloadInfo, (req as GetRequest).FilePath, File.Exists(coverArtTagFilePath) ? coverArtTagFilePath : Path.Combine(trackPath, "Cover.jpg"), _logger);
+
                 _logger.AddDownloadLogLine($"Track {(req as GetRequest).Filename} Download Done!\r\n", true, true);
             },
             RequestCancelled = req => HandleDownloadException(req.Exception, "Track Download canceled, probably due to network error or request timeout."),
@@ -209,14 +214,14 @@ namespace QobuzDownloaderX.Models.Download
         private GetRequest DownloadCoverArt(bool isPartOfTracklist)
         {
             string coverArtTagFilePath = Path.Combine(_downloadPaths.Path3Full, Globals.TaggingOptions.ArtSize + ".jpg");
-
             if (!File.Exists(coverArtTagFilePath))
                 return new(_downloadInfo.FrontCoverImgTagUrl, new GetRequestOptions
                 {
                     IsDownload = true,
+                    Priority = RequestPriority.High,
                     DirectoryPath = _downloadPaths.Path3Full,
                     Filename = Globals.TaggingOptions.ArtSize + ".jpg",
-                    NumberOfAttempts = 1,
+                    NumberOfAttempts = 2,
                     RequestFailed = (req, _) => _logger.AddDownloadErrorLogLines(["Error downloading image file for tagging.", req.Exception.Message, Environment.NewLine])
                 });
 
@@ -228,8 +233,9 @@ namespace QobuzDownloaderX.Models.Download
                     IsDownload = true,
                     DirectoryPath = _downloadPaths.Path3Full,
                     Filename = "Cover.jpg",
+                    Priority = RequestPriority.High,
                     NumberOfAttempts = 1,
-                    RequestFailed = (req, _) => _logger.AddDownloadErrorLogLines(new string[] { "Error downloading full size cover image file.", req.Exception.Message, Environment.NewLine })
+                    RequestFailed = (req, _) => _logger.AddDownloadErrorLogLines(["Error downloading full size cover image file.", req.Exception.Message, Environment.NewLine])
                 });
             return null;
         }
@@ -237,9 +243,16 @@ namespace QobuzDownloaderX.Models.Download
 
         private void RemoveTempTaggingArtFile()
         {
-            string coverArtTagFilePath = Path.Combine(_downloadPaths.Path3Full, Globals.TaggingOptions.ArtSize + ".jpg");
-            if (File.Exists(coverArtTagFilePath))
-                File.Delete(coverArtTagFilePath);
+            try
+            {
+                string coverArtTagFilePath = Path.Combine(_downloadPaths.Path3Full, Globals.TaggingOptions.ArtSize + ".jpg");
+                if (File.Exists(coverArtTagFilePath))
+                    File.Delete(coverArtTagFilePath);
+            }
+            catch
+            {
+            }
+
         }
 
         private void HandleDownloadException(Exception ex, string message)
@@ -353,7 +366,7 @@ namespace QobuzDownloaderX.Models.Download
                     return false;
                 //_logger.ClearUiLogComponent();
                 _logger.AddEmptyDownloadLogLine(true, false);
-                _logger.AddDownloadLogLine($"Starting Downloads for album \"{qobuzAlbum.Title}\" with ID: <{qobuzAlbum.Id}>...", true, true);
+                _logger.AddDownloadLogLine($"Creating Download requests for album \"{qobuzAlbum.Title}\" with ID: <{qobuzAlbum.Id}>...", true, true);
                 _logger.AddEmptyDownloadLogLine(true, true);
                 if (!DownloadAlbum(qobuzAlbum, basePath, $" [{qobuzAlbum.Id}]"))
                     noAlbumErrorsOccured = false;
@@ -378,7 +391,7 @@ namespace QobuzDownloaderX.Models.Download
                     continue;
                 }
                 _logger.AddEmptyDownloadLogLine(true, false);
-                _logger.AddDownloadLogLine($"Starting Downloads for album \"{qobuzAlbum.Title}\" with ID: <{qobuzAlbum.Id}>...", true, true);
+                _logger.AddDownloadLogLine($"Creating Download requests for album \"{qobuzAlbum.Title}\" with ID: <{qobuzAlbum.Id}>...", true, true);
                 _logger.AddEmptyDownloadLogLine(true, true);
                 if (!DownloadAlbum(qobuzAlbum, basePath, $" [{qobuzAlbum.Id}]"))
                     noAlbumErrorsOccured = false;
@@ -436,7 +449,7 @@ namespace QobuzDownloaderX.Models.Download
                 await _requestContainer.Task;
 
                 _logger.AddEmptyDownloadLogLine(true, true);
-                _logger.AddDownloadLogLine("Download job completed! All downloaded files will be located in your chosen path.", true, true);
+                _logger.AddDownloadLogLine("Download job completed! All downloaded files will be located in your chosen path.\r\n", true, true);
             }
             catch (Exception downloadEx)
             {

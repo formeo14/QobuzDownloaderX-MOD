@@ -264,10 +264,14 @@ namespace QobuzDownloaderX
             DownloadItem[] downloadItems = new DownloadItem[downloadLinks.Length];
             // Get download item type and ID from url
             for (int i = 0; i < downloadLinks.Length; i++)
-                downloadItems[i] = DownloadUrlParser.ParseDownloadUrl(downloadLinks[i]);
+                downloadItems[i] = _requests.Any(x => x.StartOptions.DownloadItem.Url == downloadLinks[i]) ? new("") : DownloadUrlParser.ParseDownloadUrl(downloadLinks[i]);
+
+
 
             foreach (var downloadItem in downloadItems)
-                if (downloadItem.IsEmpty())
+                if (downloadItem.Url == "")
+                    output.Invoke(new Action(() => output.AppendText($"The item is currently being downloaded.\r\n")));
+                else if (downloadItem.IsEmpty())
                     output.Invoke(new Action(() => output.AppendText($"URL >{downloadItem.Url}< not understood. Is there a typo?\r\n")));
                 else
                     _requests.Add(new TrackRequest(new()
@@ -284,9 +288,6 @@ namespace QobuzDownloaderX
                     }));
 
             // Run the StartDownloadItemTaskAsync method on a background thread & Wait for the task to complete
-
-
-
         }
 
         public void UpdateControlsDownloadStart()
@@ -295,17 +296,7 @@ namespace QobuzDownloaderX
             flacLowCheckbox.Invoke(new Action(() => flacLowCheckbox.AutoCheck = false));
             flacMidCheckbox.Invoke(new Action(() => flacMidCheckbox.AutoCheck = false));
             flacHighCheckbox.Invoke(new Action(() => flacHighCheckbox.AutoCheck = false));
-
-            downloadUrl.Invoke(new Action(() => downloadUrl.Enabled = false));
-
             selectFolderButton.Invoke(new Action(() => selectFolderButton.Enabled = false));
-            //openSearchButton.Invoke(new Action(() => openSearchButton.Enabled = false));
-
-            downloadButton.Invoke(new Action(() =>
-            {
-                downloadButton.Text = "Stop Download";
-                downloadButton.BackColor = BuzyButtonBackColor;
-            }));
         }
 
         public void UpdateControlsDownloadEnd()
