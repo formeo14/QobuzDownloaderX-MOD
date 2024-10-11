@@ -227,6 +227,10 @@ namespace QobuzDownloaderX
             }
         }
 
+        private void OpenSettings_Click(object sender, EventArgs e)
+        {
+            Globals.SettingsForm.ShowDialog(this);
+        }
 
         private void AboutLabel_Click(object sender, EventArgs e)
         {
@@ -298,11 +302,23 @@ namespace QobuzDownloaderX
         {
             loginBG.WorkerSupportsCancellation = true;
 
-            // Initialize QobuzApiServiceManager with default Web Player AppId and AppSecret
+            String appId = Settings.Default.appId;
+            String appSecret = Settings.Default.appSecret;
+            bool useCustomAppIdAndSecret = !string.IsNullOrWhiteSpace(appId) && !string.IsNullOrWhiteSpace(appSecret);
+
+            // Initialize QobuzApiServiceManager with default Web Player AppId and AppSecret if not set in settings
+            // Otherwise, use the provided app_id & app_secret
             try
             {
-                // Dynamic retrieval of app_id & app_secret in QobuzApiService were valid as of bundle-7.0.1-b018.js
-                QobuzApiServiceManager.Initialize();
+                if (useCustomAppIdAndSecret)
+                {
+                    QobuzApiServiceManager.Initialize(appId, appSecret);
+                }
+                else
+                {
+                    // Dynamic retrieval of app_id & app_secret in QobuzApiService were valid as of bundle-7.2.0-b082e.js
+                    QobuzApiServiceManager.Initialize();
+                }
             }
             catch (Exception ex)
             {
@@ -311,6 +327,9 @@ namespace QobuzDownloaderX
                 switch (ex)
                 {
                     case QobuzApiInitializationException _:
+                        errorMessage = $"{ex.Message} Error Log saved";
+                        break;
+                    case ArgumentException _:
                         errorMessage = $"{ex.Message} Error Log saved";
                         break;
                     default:
@@ -326,7 +345,13 @@ namespace QobuzDownloaderX
                 return;
             }
 
-            loginText.Invoke(new Action(() => loginText.Text = "ID and Secret Obtained! Logging in.."));
+            if (useCustomAppIdAndSecret)
+            {
+                loginText.Invoke(new Action(() => loginText.Text = "Using custom App ID and Secret! Logging in..."));
+            } else
+            {
+                loginText.Invoke(new Action(() => loginText.Text = "ID and Secret Obtained! Logging in..."));
+            }
 
             try
             {
@@ -499,7 +524,7 @@ namespace QobuzDownloaderX
             loginBG.RunWorkerAsync();
         }
 
-        private void Panel1_MouseMove(object sender, MouseEventArgs e)
+        private void TopPanel_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
