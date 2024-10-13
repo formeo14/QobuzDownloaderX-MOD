@@ -259,7 +259,7 @@ namespace QobuzDownloaderX
             if (isExplicit)
             {
                 System.Windows.Forms.Label explicitLabel = CreateLabel("E", Color.FromArgb(75, 75, 75), Color.OrangeRed, FontManager.CreateFont("Hanken Grotesk ExtraBold", 8, FontStyle.Bold), BorderStyle.None, new Padding(5, 0, 0, 0), AnchorStyles.None);
-                
+
                 // Add tooltip for "Explicit"
                 ToolTip toolTip = new ToolTip();
                 toolTip.SetToolTip(explicitLabel, "Explicit");
@@ -469,11 +469,11 @@ namespace QobuzDownloaderX
             toolTip.SetToolTip(linkLabel, url);
 
             // Add context menu with "Copy URL" option
-            ContextMenu contextMenu = new ContextMenu();
-            MenuItem copyUrlItem = new MenuItem("Copy URL");
+            ContextMenuStrip contextMenu = new ContextMenuStrip();
+            ToolStripMenuItem copyUrlItem = new ToolStripMenuItem("Copy URL");
             copyUrlItem.Click += (sender, e) => CopyToClipboard(url);
-            contextMenu.MenuItems.Add(copyUrlItem);
-            linkLabel.ContextMenu = contextMenu;
+            contextMenu.Items.Add(copyUrlItem);
+            linkLabel.ContextMenuStrip = contextMenu;
         }
 
         private void ResizeControlForText(Control control, int extraMargin = 0, int fixedWidth = 0)
