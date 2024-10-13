@@ -384,7 +384,7 @@ namespace QobuzDownloaderX
                 Globals.QbdlxForm.downloadUrl.Invoke(new Action(() => Globals.QbdlxForm.downloadUrl.Text = webPlayerUrl));
                 this.Close();
                 // Start download from the main form
-                await Globals.QbdlxForm.StartLinkItemDownloadAsync(webPlayerUrl);
+                Globals.QbdlxForm.StartLinkItemDownload(webPlayerUrl);
             }
             catch (Exception ex)
             {

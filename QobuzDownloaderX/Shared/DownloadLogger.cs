@@ -6,20 +6,12 @@ using System.Linq;
 
 namespace QobuzDownloaderX.Shared
 {
-    public class DownloadLogger
+    public class DownloadLogger(TextBox outputTextBox, string specifier)
     {
-        public readonly string downloadErrorLogPath = Path.Combine(Globals.LoggingDir, "Download_Errors.log");
-        public delegate void DownloadEnded();
-        private readonly DownloadEnded updateUiOnDownloadEnd;
-        private TextBox ScreenOutputTextBox { get; }
+        public readonly string downloadErrorLogPath  = Path.Combine(Globals.LoggingDir, $"{specifier}.log");
+        private TextBox ScreenOutputTextBox { get; } = outputTextBox;
 
         public string DownloadLogPath { get; set; }
-
-        public DownloadLogger(TextBox outputTextBox, DownloadEnded updateUiOnDownloadEnd)
-        {
-            ScreenOutputTextBox = outputTextBox;
-            this.updateUiOnDownloadEnd = updateUiOnDownloadEnd;
-        }
 
         public void RemovePreviousErrorLog()
         {
@@ -107,13 +99,12 @@ namespace QobuzDownloaderX.Shared
         public void LogDownloadTaskException(string downloadTaskType, Exception downloadEx)
         {
             // If there is an issue trying to, or during the download, show error info.
-            ClearUiLogComponent();
+            // ClearUiLogComponent();
             AddDownloadLogErrorLine($"{downloadTaskType} Download Task ERROR. Details saved to error log.{Environment.NewLine}", true, true);
 
             AddDownloadErrorLogLine($"{downloadTaskType} Download Task ERROR.");
             AddDownloadErrorLogLine(downloadEx.ToString());
             AddDownloadErrorLogLine(Environment.NewLine);
-            updateUiOnDownloadEnd?.Invoke();
         }
 
         public void LogFinishedDownloadJob(bool noErrorsOccured)
@@ -129,8 +120,6 @@ namespace QobuzDownloaderX.Shared
             {
                 AddDownloadLogLine("Download job completed with warnings and/or errors! Some or all files could be missing!", true, true);
             }
-
-            updateUiOnDownloadEnd?.Invoke();
         }
 
         public void ClearUiLogComponent()
