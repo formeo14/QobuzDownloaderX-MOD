@@ -6,20 +6,13 @@ using System.Linq;
 
 namespace QobuzDownloaderX.Shared
 {
-    public class DownloadLogger
+    public class DownloadLogger(TextBox outputTextBox, string specifier)
     {
+        public readonly string logPath = Path.Combine(Globals.LoggingDir, $"{specifier}.log");
         public readonly string downloadErrorLogPath = Path.Combine(Globals.LoggingDir, "Download_Errors.log");
-        public delegate void DownloadEnded();
-        private readonly DownloadEnded updateUiOnDownloadEnd;
-        private TextBox ScreenOutputTextBox { get; }
+        private TextBox ScreenOutputTextBox { get; } = outputTextBox;
 
         public string DownloadLogPath { get; set; }
-
-        public DownloadLogger(TextBox outputTextBox, DownloadEnded updateUiOnDownloadEnd)
-        {
-            ScreenOutputTextBox = outputTextBox;
-            this.updateUiOnDownloadEnd = updateUiOnDownloadEnd;
-        }
 
         public void RemovePreviousErrorLog()
         {
@@ -48,20 +41,10 @@ namespace QobuzDownloaderX.Shared
             if (logToFile)
             {
                 var logEntries = logEntry.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
-                    .Select(logLine => string.IsNullOrWhiteSpace(logLine) ? logLine : $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {logLine}");
+                    .Select(logLine => string.IsNullOrWhiteSpace(logLine) ? logLine : $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {logLine}")
+                    .Where(logLine => !string.IsNullOrWhiteSpace(logLine));
 
-                // Filter out all empty lines exept if the logEntry started with an empty line to avoid blank lines for each newline in UI
-                var filteredLogEntries = logEntries.Aggregate(new List<string>(), (accumulator, current) =>
-                {
-                    if (accumulator.Count == 0 || !string.IsNullOrWhiteSpace(current))
-                    {
-                        accumulator.Add(current);
-                    }
-
-                    return accumulator;
-                });
-
-                System.IO.File.AppendAllLines(DownloadLogPath, filteredLogEntries);
+                File.AppendAllLines(logPath, logEntries);
             }
         }
 
@@ -107,13 +90,12 @@ namespace QobuzDownloaderX.Shared
         public void LogDownloadTaskException(string downloadTaskType, Exception downloadEx)
         {
             // If there is an issue trying to, or during the download, show error info.
-            ClearUiLogComponent();
+            // ClearUiLogComponent();
             AddDownloadLogErrorLine($"{downloadTaskType} Download Task ERROR. Details saved to error log.{Environment.NewLine}", true, true);
 
             AddDownloadErrorLogLine($"{downloadTaskType} Download Task ERROR.");
             AddDownloadErrorLogLine(downloadEx.ToString());
             AddDownloadErrorLogLine(Environment.NewLine);
-            updateUiOnDownloadEnd?.Invoke();
         }
 
         public void LogFinishedDownloadJob(bool noErrorsOccured)
@@ -129,8 +111,6 @@ namespace QobuzDownloaderX.Shared
             {
                 AddDownloadLogLine("Download job completed with warnings and/or errors! Some or all files could be missing!", true, true);
             }
-
-            updateUiOnDownloadEnd?.Invoke();
         }
 
         public void ClearUiLogComponent()

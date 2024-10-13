@@ -1,10 +1,16 @@
-﻿using QobuzDownloaderX.Models;
+﻿using DownloadAssistant.Requests;
+using Newtonsoft.Json.Linq;
+using QobuzDownloaderX.Models;
+using QobuzDownloaderX.Models.Download;
 using QobuzDownloaderX.Properties;
 using QobuzDownloaderX.Shared;
 using QobuzDownloaderX.View;
+using Requests;
+using Requests.Options;
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,22 +21,18 @@ namespace QobuzDownloaderX
     public partial class QobuzDownloaderX : HeadlessForm
     {
         private readonly DownloadLogger logger;
-        private readonly DownloadManager downloadManager;
 
         public QobuzDownloaderX()
         {
             InitializeComponent();
 
-            logger = new DownloadLogger(output, UpdateControlsDownloadEnd);
+            logger = new DownloadLogger(output, "MainForm");
             // Remove previous download error log
             logger.RemovePreviousErrorLog();
-
-            downloadManager = new DownloadManager(logger, UpdateAlbumTagsUI, UpdateDownloadSpeedLabel)
-            {
-                CheckIfStreamable = streamableCheckbox.Checked
-            };
+            _requests.SpeedReporter.SpeedChanged += (obj, speed) => UpdateDownloadSpeedLabel(speed.ToString());
         }
 
+        private readonly ExtendedContainer<TrackRequest> _requests = [];
         public string DownloadLogPath { get; set; }
 
         public int DevClickEggThingValue { get; set; }
@@ -78,7 +80,8 @@ namespace QobuzDownloaderX
                 output.Invoke(new Action(() => output.AppendText("Active Family sub-account, unknown End Date \r\n")));
                 output.Invoke(new Action(() => output.AppendText("Credential Label - " + Globals.Login.User.Credential.Label + "\r\n")));
                 output.Invoke(new Action(() => output.AppendText("==========================\r\n\r\n")));
-            } else
+            }
+            else
             {
                 output.Invoke(new Action(() => output.AppendText("No active subscriptions, only sample downloads possible!\r\n")));
                 output.Invoke(new Action(() => output.AppendText("==========================\r\n\r\n")));
@@ -225,12 +228,14 @@ namespace QobuzDownloaderX
 
         private async void DownloadButton_Click(object sender, EventArgs e)
         {
-            if (!downloadManager.IsBuzy)
+            if (true)
             {
-                await StartLinkItemDownloadAsync(downloadUrl.Text);
-            } else
+                StartLinkItemDownload(downloadUrl.Text);
+                _requests.Remove(_requests.Where(x => x.State is RequestState.Failed or RequestState.Compleated or RequestState.Cancelled)?.ToArray());
+            }
+            else
             {
-                downloadManager.StopDownloadTask();
+                _requests.Pause();
             }
         }
 
@@ -241,11 +246,11 @@ namespace QobuzDownloaderX
                 e.Handled = true;
                 e.SuppressKeyPress = true;
 
-                await StartLinkItemDownloadAsync(downloadUrl.Text);
+                StartLinkItemDownload(downloadUrl.Text);
             }
         }
 
-        public async Task StartLinkItemDownloadAsync(string downloadLink)
+        public void StartLinkItemDownload(params string[] downloadLinks)
         {
             // Check if there's no selected path.
             if (string.IsNullOrEmpty(Settings.Default.savedFolder))
@@ -255,26 +260,38 @@ namespace QobuzDownloaderX
                 output.Invoke(new Action(() => output.AppendText($"No path has been set! Remember to Choose a Folder!{Environment.NewLine}")));
                 return;
             }
+            if (downloadLinks.All(string.IsNullOrWhiteSpace))
+            {
+                output.AppendText("The download links were empty.\r\n");
+                return;
+            }
 
+            DownloadItem[] downloadItems = new DownloadItem[downloadLinks.Length];
             // Get download item type and ID from url
-            DownloadItem downloadItem = DownloadUrlParser.ParseDownloadUrl(downloadLink);
+            for (int i = 0; i < downloadLinks.Length; i++)
+                downloadItems[i] = _requests.Any(x => x.StartOptions.DownloadItem.Url == downloadLinks[i]) ? new("") : DownloadUrlParser.ParseDownloadUrl(downloadLinks[i]);
 
-            // If download item could not be parsed, abort
-            if (downloadItem.IsEmpty())
-            {
-                logger.ClearUiLogComponent();
-                output.Invoke(new Action(() => output.AppendText("URL not understood. Is there a typo?")));
-                return;
-            }
 
-            // If, for some reason, a download is still buzy, do nothing
-            if (downloadManager.IsBuzy)
-            {
-                return;
-            }
+            foreach (var downloadItem in downloadItems)
+                if (downloadItem.Url == "")
+                    output.Invoke(new Action(() => output.AppendText($"The item is currently being downloaded.\r\n")));
+                else if (downloadItem.IsEmpty())
+                    output.Invoke(new Action(() => output.AppendText($"URL >{downloadItem.Url}< not understood. Is there a typo?\r\n")));
+                else
+                    _requests.Add(new TrackRequest(new()
+                    {
+                        DownloadItem = downloadItem,
+                        UpdateAlbumTagsUi = UpdateAlbumTagsUI,
+                        CheckIfStreamable = streamableCheckbox.Checked,
+                        Handler = RequestHandler.MainRequestHandlers[0],
+                        RequestStarted = (_) => UpdateControlsDownloadStart(),
+                        RequestCancelled = (_) => UpdateControlsDownloadEnd(),
+                        RequestFailed = (_, _) => UpdateControlsDownloadEnd(),
+                        RequestCompleated = (_, _) => UpdateControlsDownloadEnd(),
+                        Logger = new DownloadLogger(output, $"Download_Log_Item_{downloadItem.Id}_Time_{DateTime.Now:yyyy-MM-dd_HH.mm.ss.fff}")
+                    }));
 
             // Run the StartDownloadItemTaskAsync method on a background thread & Wait for the task to complete
-            await Task.Run(() => downloadManager.StartDownloadItemTaskAsync(downloadItem, UpdateControlsDownloadStart, UpdateControlsDownloadEnd));
         }
 
         public void UpdateControlsDownloadStart()
@@ -283,16 +300,14 @@ namespace QobuzDownloaderX
             flacLowCheckbox.Invoke(new Action(() => flacLowCheckbox.AutoCheck = false));
             flacMidCheckbox.Invoke(new Action(() => flacMidCheckbox.AutoCheck = false));
             flacHighCheckbox.Invoke(new Action(() => flacHighCheckbox.AutoCheck = false));
-
-            downloadUrl.Invoke(new Action(() => downloadUrl.Enabled = false));
-
+            //downloadUrl.Invoke(new Action(() => downloadUrl.Enabled = false));
             selectFolderButton.Invoke(new Action(() => selectFolderButton.Enabled = false));
-            openSearchButton.Invoke(new Action(() => openSearchButton.Enabled = false));
+            //openSearchButton.Invoke(new Action(() => openSearchButton.Enabled = false));
 
-            downloadButton.Invoke(new Action(() => {
-                downloadButton.Text = "Stop Download";
-                downloadButton.BackColor = BuzyButtonBackColor;
-            }));
+            //downloadButton.Invoke(new Action(() => {
+            //    downloadButton.Text = "Stop Download";
+            //    downloadButton.BackColor = BuzyButtonBackColor;
+            //}));
         }
 
         public void UpdateControlsDownloadEnd()
@@ -903,7 +918,7 @@ namespace QobuzDownloaderX
 
         private void StreamableCheckbox_CheckedChanged(object sender, EventArgs e)
         {
-            downloadManager.CheckIfStreamable = streamableCheckbox.Checked;
+            // Not implemented
         }
     }
 }
