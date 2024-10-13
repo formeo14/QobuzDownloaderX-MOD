@@ -75,6 +75,8 @@
     <PackageReference Include="PortableJsonSettingsProvider">
       <Version>0.2.2</Version>
     </PackageReference>
+    <PackageReference Include="QobuzApiSharp" Version="0.0.8" />
+    <PackageReference Include="Shard.DownloadAssistant" Version="1.0.3" />
     <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
