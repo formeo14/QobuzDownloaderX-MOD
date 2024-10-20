@@ -28,7 +28,7 @@ namespace QobuzDownloaderX
             this.AutoSize = true;
             InitializeComponent();
             logger = new DownloadLogger(output, "MainForm");
-            RequestHandler.MainRequestHandlers[0].StaticDegreeOfParallelism = 1;
+            RequestHandler.MainRequestHandlers[0].StaticDegreeOfParallelism = 2;
             // Remove previous download error log
             logger.RemovePreviousErrorLog();
             _requests.SpeedReporter.Timeout = 1000;
