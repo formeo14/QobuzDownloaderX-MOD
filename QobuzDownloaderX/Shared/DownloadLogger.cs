@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 using System.Linq;
+using System.Threading;
 
 namespace QobuzDownloaderX.Shared
 {
@@ -10,6 +11,7 @@ namespace QobuzDownloaderX.Shared
     {
         public readonly string logPath = Path.Combine(Globals.LoggingDir, $"{specifier}.log");
         public readonly string downloadErrorLogPath = Path.Combine(Globals.LoggingDir, "Download_Errors.log");
+        private static readonly SemaphoreSlim _fileSemaphore = new(1, 1);
         private TextBox ScreenOutputTextBox { get; } = outputTextBox;
 
         public string DownloadLogPath { get; set; }
@@ -36,15 +38,20 @@ namespace QobuzDownloaderX.Shared
         {
             if (string.IsNullOrEmpty(logEntry)) return;
 
+            _fileSemaphore.Wait();
             if (logToScreen) ScreenOutputTextBox?.Invoke(new Action(() => ScreenOutputTextBox.AppendText(logEntry)));
 
             if (logToFile)
             {
-                var logEntries = logEntry.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
-                    .Select(logLine => string.IsNullOrWhiteSpace(logLine) ? logLine : $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {logLine}")
-                    .Where(logLine => !string.IsNullOrWhiteSpace(logLine));
+                try
+                {
+                    var logEntries = logEntry.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+                        .Select(logLine => string.IsNullOrWhiteSpace(logLine) ? logLine : $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {logLine}")
+                        .Where(logLine => !string.IsNullOrWhiteSpace(logLine));
 
-                File.AppendAllLines(logPath, logEntries);
+                    File.AppendAllLines(logPath, logEntries);
+                }
+                finally { _fileSemaphore.Release(); }
             }
         }
 
@@ -72,8 +79,9 @@ namespace QobuzDownloaderX.Shared
         public void AddDownloadErrorLogLines(IEnumerable<string> logEntries)
         {
             if (logEntries == null && !logEntries.Any()) return;
-
-            System.IO.File.AppendAllLines(downloadErrorLogPath, logEntries);
+            _fileSemaphore.Wait();
+            try { System.IO.File.AppendAllLines(downloadErrorLogPath, logEntries);}
+            finally{ _fileSemaphore.Release(); }
         }
 
         public void AddDownloadErrorLogLine(string logEntry)
@@ -105,11 +113,11 @@ namespace QobuzDownloaderX.Shared
             // Say that downloading is completed.
             if (noErrorsOccured)
             {
-                AddDownloadLogLine("Download job completed! All downloaded files will be located in your chosen path.", true, true);
+                AddDownloadLogLine($"Download job completed! All downloaded files will be located in your chosen path..{Environment.NewLine}", true, true);
             }
             else
             {
-                AddDownloadLogLine("Download job completed with warnings and/or errors! Some or all files could be missing!", true, true);
+                AddDownloadLogLine($"Download job completed with warnings and/or errors! Some or all files could be missing!.{Environment.NewLine}", true, true);
             }
         }
 

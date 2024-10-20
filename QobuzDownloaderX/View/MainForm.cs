@@ -8,6 +8,7 @@ using QobuzDownloaderX.View;
 using Requests;
 using Requests.Options;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
@@ -24,12 +25,18 @@ namespace QobuzDownloaderX
 
         public QobuzDownloaderX()
         {
+            this.AutoSize = true;
             InitializeComponent();
-
             logger = new DownloadLogger(output, "MainForm");
+            RequestHandler.MainRequestHandlers[0].StaticDegreeOfParallelism = 1;
             // Remove previous download error log
             logger.RemovePreviousErrorLog();
-            _requests.SpeedReporter.SpeedChanged += (obj, speed) => UpdateDownloadSpeedLabel(speed.ToString());
+            _requests.SpeedReporter.Timeout = 1000;
+            _requests.SpeedReporter.SpeedChanged += (obj, speed) =>
+            {
+                double speedInMB = ((double)speed) / (1024 * 1024);
+                UpdateDownloadSpeedLabel($"{speedInMB:F2} MB/s");
+            };
         }
 
         private readonly ExtendedContainer<TrackRequest> _requests = [];
@@ -47,7 +54,7 @@ namespace QobuzDownloaderX
         private void MainForm_Load(object sender, EventArgs e)
         {
             // Set main form size on launch and bring to center.
-            this.Height = 533;
+            this.Height = 800;
             this.CenterToScreen();
 
             // Grab profile image
@@ -228,15 +235,8 @@ namespace QobuzDownloaderX
 
         private async void DownloadButton_Click(object sender, EventArgs e)
         {
-            if (true)
-            {
-                StartLinkItemDownload(downloadUrl.Text);
-                _requests.Remove(_requests.Where(x => x.State is RequestState.Failed or RequestState.Compleated or RequestState.Cancelled)?.ToArray());
-            }
-            else
-            {
-                _requests.Pause();
-            }
+            StartLinkItemDownload(downloadUrl.Text);
+            _requests.Remove(_requests.Where(x => x.State is RequestState.Failed or RequestState.Compleated or RequestState.Cancelled)?.ToArray());
         }
 
         private async void DownloadUrl_KeyDown(object sender, KeyEventArgs e)
@@ -262,21 +262,42 @@ namespace QobuzDownloaderX
             }
             if (downloadLinks.All(string.IsNullOrWhiteSpace))
             {
-                output.AppendText("The download links were empty.\r\n");
+                if (_requests.State == RequestState.Paused && _requests.Length > 0)
+                {
+                    output.Invoke(new Action(() => output.AppendText("Starting all paused downloads.\r\n")));
+                    _requests.Start();
+                }
+                else if (_requests.State == RequestState.Running)
+                    _requests.ToList().ForEach(x => x.Start());
+                else
+                    output.Invoke(new Action(() => output.AppendText("The download links were empty.\r\n")));
                 return;
             }
 
-            DownloadItem[] downloadItems = new DownloadItem[downloadLinks.Length];
-            // Get download item type and ID from url
-            for (int i = 0; i < downloadLinks.Length; i++)
-                downloadItems[i] = _requests.Any(x => x.StartOptions.DownloadItem.Url == downloadLinks[i]) ? new("") : DownloadUrlParser.ParseDownloadUrl(downloadLinks[i]);
+            List<DownloadItem> downloadItems = new(downloadLinks.Length);
+            foreach (string downloadLink in downloadLinks)
+            {
+                var request = _requests.FirstOrDefault(x => x.StartOptions.DownloadItem.Url == downloadLink);
 
+                switch (request)
+                {
+                    case null:
+                        downloadItems.Add(DownloadUrlParser.ParseDownloadUrl(downloadLink));
+                        break;
+                    case var r when r.State == RequestState.Paused:
+                        r.Start();
+                        output.Invoke(new Action(() => output.AppendText($"Restarting download for URL: {downloadLink}\r\n")));
+                        break;
+                    default:
+                        output.Invoke(new Action(() => output.AppendText($"URL: {downloadLink} is already being downloaded.\r\n")));
+                        break;
+                }
+            }
 
             foreach (var downloadItem in downloadItems)
-                if (downloadItem.Url == "")
-                    output.Invoke(new Action(() => output.AppendText($"The item is currently being downloaded.\r\n")));
-                else if (downloadItem.IsEmpty())
+                if (downloadItem.IsEmpty())
                     output.Invoke(new Action(() => output.AppendText($"URL >{downloadItem.Url}< not understood. Is there a typo?\r\n")));
+
                 else
                     _requests.Add(new TrackRequest(new()
                     {
@@ -322,7 +343,8 @@ namespace QobuzDownloaderX
             selectFolderButton.Invoke(new Action(() => selectFolderButton.Enabled = true));
             openSearchButton.Invoke(new Action(() => openSearchButton.Enabled = true));
 
-            downloadButton.Invoke(new Action(() => {
+            downloadButton.Invoke(new Action(() =>
+            {
                 downloadButton.Text = "Download";
                 downloadButton.BackColor = ReadyButtonBackColor;
             }));
@@ -920,5 +942,33 @@ namespace QobuzDownloaderX
         {
             // Not implemented
         }
+
+        private void stopButton_Click(object sender, EventArgs e)
+        {
+            if (downloadUrl.Text == "cancel")
+            {
+                _requests.Cancel();
+                output.AppendText("Canceling all downloads.\r\n");
+            }
+            else if (string.IsNullOrWhiteSpace(downloadUrl.Text))
+            {
+                _requests.Pause();
+                output.AppendText("Pausing all downloads.\r\n");
+            }
+            else
+            {
+                var request = _requests.FirstOrDefault(x => x.StartOptions.DownloadItem.Url == downloadUrl.Text);
+                if (request != null)
+                {
+                    request.Pause();
+                    output.AppendText($"Pausing download for URL: {downloadUrl.Text}\r\n");
+                }
+                else
+                {
+                    output.AppendText($"No active download found to pause URL: {downloadUrl.Text}\r\n");
+                }
+            }
+        }
+
     }
 }

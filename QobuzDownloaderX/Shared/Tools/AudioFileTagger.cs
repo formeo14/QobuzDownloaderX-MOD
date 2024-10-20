@@ -278,7 +278,7 @@ namespace QobuzDownloaderX.Shared
                     if (Globals.TaggingOptions.WriteInvolvedPeopleTag) { custom.SetField("INVOLVEDPEOPLE", fileInfo.InvolvedPeople); }
 
                     // Release Year tag (The "tfile.Tag.Year" field actually writes to the DATE tag, so use custom tag)
-                    if (Globals.TaggingOptions.WriteReleaseYearTag) { custom.SetField("YEAR", fileInfo.ReleaseDate.Substring(0, 4)); }
+                    if (Globals.TaggingOptions.WriteReleaseYearTag) { custom.SetField("YEAR", fileInfo.ReleaseDate?[..4] ?? "0000"); }
 
                     // Release Date tag
                     if (Globals.TaggingOptions.WriteReleaseDateTag) { custom.SetField("DATE", fileInfo.ReleaseDate); }
