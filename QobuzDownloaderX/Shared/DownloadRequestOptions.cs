@@ -1,9 +1,9 @@
-﻿using QobuzDownloaderX.Shared;
+﻿using QobuzDownloaderX.Models;
 using Requests.Options;
 
-namespace QobuzDownloaderX.Models.Download
+namespace QobuzDownloaderX.Shared
 {
-    public record TrackRequestOptions : RequestOptions<DownloadItem, DownloadItem>
+    public record DownloadRequestOptions : RequestOptions<DownloadItem, DownloadItem>
     {
         public DownloadLogger Logger { get; init; }
         public DownloadItem DownloadItem { get; init; }
@@ -14,14 +14,14 @@ namespace QobuzDownloaderX.Models.Download
         /// <summary>
         /// Main Constructor
         /// </summary>
-        public TrackRequestOptions()
+        public DownloadRequestOptions()
         { }
 
         /// <summary>
         /// Copy Constructor
         /// </summary>
         /// <param name="options">Copied object</param>
-        protected TrackRequestOptions(TrackRequestOptions options) : base(options)
+        protected DownloadRequestOptions(DownloadRequestOptions options) : base(options)
         {
             Logger = options.Logger;
             DownloadItem = options.DownloadItem;

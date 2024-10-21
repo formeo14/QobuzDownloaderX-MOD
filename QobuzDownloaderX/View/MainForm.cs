@@ -1,7 +1,6 @@
 ﻿using DownloadAssistant.Requests;
 using Newtonsoft.Json.Linq;
 using QobuzDownloaderX.Models;
-using QobuzDownloaderX.Models.Download;
 using QobuzDownloaderX.Properties;
 using QobuzDownloaderX.Shared;
 using QobuzDownloaderX.View;
@@ -39,7 +38,7 @@ namespace QobuzDownloaderX
             };
         }
 
-        private readonly ExtendedContainer<TrackRequest> _requests = [];
+        private readonly ExtendedContainer<DownloadRequest> _requests = [];
         public string DownloadLogPath { get; set; }
 
         public int DevClickEggThingValue { get; set; }
@@ -299,7 +298,7 @@ namespace QobuzDownloaderX
                     output.Invoke(new Action(() => output.AppendText($"URL >{downloadItem.Url}< not understood. Is there a typo?\r\n")));
 
                 else
-                    _requests.Add(new TrackRequest(new()
+                    _requests.Add(new DownloadRequest(new()
                     {
                         DownloadItem = downloadItem,
                         UpdateAlbumTagsUi = UpdateAlbumTagsUI,

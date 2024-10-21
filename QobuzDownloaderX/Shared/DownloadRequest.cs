@@ -5,9 +5,9 @@ using PlaylistsNET.Models;
 using QobuzApiSharp.Exceptions;
 using QobuzApiSharp.Models.Content;
 using QobuzApiSharp.Service;
+using QobuzDownloaderX.Models;
 using QobuzDownloaderX.Models.Content;
 using QobuzDownloaderX.Properties;
-using QobuzDownloaderX.Shared;
 using Requests;
 using Requests.Options;
 using System;
@@ -18,9 +18,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace QobuzDownloaderX.Models.Download
+namespace QobuzDownloaderX.Shared
 {
-    internal class TrackRequest : Request<TrackRequestOptions, DownloadItem, DownloadItem>, ISpeedReportable
+    internal class DownloadRequest : Request<DownloadRequestOptions, DownloadItem, DownloadItem>, ISpeedReportable
     {
         private readonly DownloadLogger _logger;
         private readonly DownloadItem _downloadItem;
@@ -35,7 +35,7 @@ namespace QobuzDownloaderX.Models.Download
 
         public SpeedReporter<long> SpeedReporter => _requestContainer.SpeedReporter;
 
-        public TrackRequest(TrackRequestOptions options)
+        public DownloadRequest(DownloadRequestOptions options)
             : base(options)
         {
             _logger = options.Logger;
@@ -188,7 +188,7 @@ namespace QobuzDownloaderX.Models.Download
             if (removeTagArtFileAfterDownload)
             {
                 Notify<IRequest, DownloadItem> x = (_, _) => RemoveTempTaggingArtFile(key);
-                Options.RequestCompleated = (Notify<IRequest, DownloadItem>)(Delegate.Combine(Options.RequestCompleated, x));
+                Options.RequestCompleated = (Notify<IRequest, DownloadItem>)Delegate.Combine(Options.RequestCompleated, x);
             }
             return true;
         }
@@ -304,7 +304,7 @@ namespace QobuzDownloaderX.Models.Download
             {
                 if (State != RequestState.Running && State != RequestState.Idle)
                     return false;
-                bool isLastTrackOfAlbum = (i + tracksPageOffset) == (tracksTotal - 1);
+                bool isLastTrackOfAlbum = i + tracksPageOffset == tracksTotal - 1;
                 Track qobuzTrack = qobuzAlbum.Tracks.Items[i];
                 qobuzTrack.Album = qobuzAlbum;
 
@@ -312,7 +312,7 @@ namespace QobuzDownloaderX.Models.Download
                     noErrorsOccured = false;
 
                 i++;
-                if (i == tracksLoaded && tracksTotal > (i + tracksPageOffset))
+                if (i == tracksLoaded && tracksTotal > i + tracksPageOffset)
                 {
                     tracksPageOffset += tracksLimit;
                     qobuzAlbum = ExecuteApiCall(apiService => apiService.GetAlbum(qobuzAlbum.Id, true, null, tracksLimit, tracksPageOffset));
