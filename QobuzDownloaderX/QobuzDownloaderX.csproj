@@ -1,93 +1,75 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <OutputType>WinExe</OutputType>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-    <PackageReadmeFile>..\README.md</PackageReadmeFile>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugType>embedded</DebugType>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-    <DocumentationFile>
-    </DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationIcon>Resources\qbdlx_icon.ico</ApplicationIcon>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject>QobuzDownloaderX.Program</StartupObject>
-  </PropertyGroup>
-  <ItemGroup>
-    <None Include="Resources\Fonts\HKGrotesk-Bold.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-BoldItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-BoldLegacy.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-BoldLegacyItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-Italic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-LegacyItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-Light.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-LightItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-LightLegacy.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-LightLegacyItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-Medium.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-MediumItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-MediumLegacy.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-MediumLegacyItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-Regular.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-RegularLegacy.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-SemiBold.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-SemiBoldItalic.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-SemiBoldLegacy.ttf" />
-    <None Include="Resources\Fonts\HKGrotesk-SemiBoldLegacyItalic.ttf" />
-  </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.8">
-      <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4.8 %28x86 and x64%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="PlaylistsNET">
-      <Version>1.4.1</Version>
-    </PackageReference>
-    <PackageReference Include="PortableJsonSettingsProvider">
-      <Version>0.2.2</Version>
-    </PackageReference>
-    <PackageReference Include="QobuzApiSharp" Version="0.0.8" />
-    <PackageReference Include="Shard.DownloadAssistant" Version="1.0.3" />
-    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
-    <PackageReference Include="TagLibSharp" Version="2.3.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\settings_icon.bmp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\settings_icon.png" />
-  </ItemGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<OutputType>WinExe</OutputType>
+		<Version>1.2.7.0</Version>
+		<FileVersion>1.2.7.0</FileVersion>
+		<AssemblyVersion>1.2.7.0</AssemblyVersion>
+    <ApplicationVersion> 1.2.7.%0a</ApplicationVersion>
+		<UseWindowsForms>true</UseWindowsForms>
+		<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Resources\qbdlx_icon.ico</ApplicationIcon>
+		<StartupObject>QobuzDownloaderX.Program</StartupObject>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+		<DebugType>embedded</DebugType>
+		<GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+		<DocumentationFile></DocumentationFile>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+		<DebugSymbols>true</DebugSymbols>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="Resources\Fonts\HKGrotesk-Bold.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-BoldItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-BoldLegacy.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-BoldLegacyItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-Italic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-LegacyItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-Light.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-LightItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-LightLegacy.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-LightLegacyItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-Medium.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-MediumItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-MediumLegacy.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-MediumLegacyItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-Regular.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-RegularLegacy.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-SemiBold.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-SemiBoldItalic.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-SemiBoldLegacy.ttf" />
+		<None Include="Resources\Fonts\HKGrotesk-SemiBoldLegacyItalic.ttf" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+		<PackageReference Include="PlaylistsNET">
+			<Version>1.4.1</Version>
+		</PackageReference>
+		<PackageReference Include="PortableJsonSettingsProvider">
+			<Version>0.2.2</Version>
+		</PackageReference>
+		<PackageReference Include="QobuzApiSharp" Version="0.0.8" />
+		<PackageReference Include="Shard.DownloadAssistant" Version="1.0.3" />
+		<PackageReference Include="Shard.Requests" Version="2.1.5" />
+		<PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+		<PackageReference Include="TagLibSharp" Version="2.3.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="Resources\settings_icon.bmp" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="Resources\settings_icon.png" />
+	</ItemGroup>
 </Project>

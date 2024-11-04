@@ -1,5 +1,4 @@
 ﻿using DownloadAssistant.Requests;
-using Newtonsoft.Json.Linq;
 using QobuzDownloaderX.Models;
 using QobuzDownloaderX.Properties;
 using QobuzDownloaderX.Shared;
@@ -13,7 +12,6 @@ using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace QobuzDownloaderX
@@ -24,8 +22,10 @@ namespace QobuzDownloaderX
 
         public QobuzDownloaderX()
         {
-            this.AutoSize = true;
+            // this.AutoSize = true;
             InitializeComponent();
+            this.Height = 750;
+            this.Width = 1086;
             logger = new DownloadLogger(output, "MainForm");
             RequestHandler.MainRequestHandlers[0].StaticDegreeOfParallelism = 2;
             // Remove previous download error log
@@ -38,7 +38,7 @@ namespace QobuzDownloaderX
             };
         }
 
-        private readonly ExtendedContainer<DownloadRequest> _requests = [];
+        private ExtendedContainer<DownloadRequest> _requests = [];
         public string DownloadLogPath { get; set; }
 
         public int DevClickEggThingValue { get; set; }
@@ -53,7 +53,6 @@ namespace QobuzDownloaderX
         private void MainForm_Load(object sender, EventArgs e)
         {
             // Set main form size on launch and bring to center.
-            this.Height = 800;
             this.CenterToScreen();
 
             // Grab profile image
@@ -379,15 +378,44 @@ namespace QobuzDownloaderX
             {
                 // If selected path doesn't exist, create it. (Will be ignored if it does)
                 System.IO.Directory.CreateDirectory(folderBrowserDialog.SelectedPath);
+
                 // Open selected folder
-                Process.Start(@folderBrowserDialog.SelectedPath);
+                try
+                {
+                    ProcessStartInfo startInfo = new()
+                    {
+                        FileName = folderBrowserDialog.SelectedPath,
+                        UseShellExecute = true,
+                        WorkingDirectory = folderBrowserDialog.SelectedPath
+                    };
+                    Process.Start(startInfo);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred: {ex.Message}", "ERROR",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
         private void OpenLogFolderButton_Click(object sender, EventArgs e)
         {
             // Open log folder. Folder should exist here so no extra check
-            Process.Start(@Globals.LoggingDir);
+            try
+            {
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = Globals.LoggingDir,
+                    UseShellExecute = true,
+                    WorkingDirectory = Globals.LoggingDir
+                };
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}", "ERROR",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // Update UI for downloading album
@@ -409,18 +437,21 @@ namespace QobuzDownloaderX
 
         private void tagsLabel_Click(object sender, EventArgs e)
         {
-            if (this.Height == 533)
+
+            if (this.Height == 610)
             {
-                //New Height
-                this.Height = 660;
+                // New Height
+                this.Height = 750;
                 tagsLabel.Text = "🠉 Choose which tags to save (click me) 🠉";
             }
-            else if (this.Height == 660)
+            else if (this.Height == 750)
             {
-                //New Height
-                this.Height = 533;
+                // New Height
+                this.Height = 610;
                 tagsLabel.Text = "🠋 Choose which tags to save (click me) 🠋";
             }
+
+            Debug.WriteLine($"After setting Height: {this.Height}");
         }
 
         private void AlbumCheckbox_CheckedChanged(object sender, EventArgs e)
@@ -948,6 +979,7 @@ namespace QobuzDownloaderX
             {
                 _requests.Cancel();
                 output.AppendText("Canceling all downloads.\r\n");
+                _requests = new();
             }
             else if (string.IsNullOrWhiteSpace(downloadUrl.Text))
             {
