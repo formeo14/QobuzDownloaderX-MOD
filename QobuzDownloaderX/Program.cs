@@ -1,5 +1,6 @@
 ﻿using Bluegrams.Application;
 using QobuzDownloaderX.Shared;
+using QobuzDownloaderX.View;
 using System;
 using System.Globalization;
 using System.Windows.Forms;
@@ -37,13 +38,14 @@ namespace QobuzDownloaderX
 
             // Initialise forms
             Globals.LoginForm = new LoginForm();
+            Globals.QueueForm = new QueueForm();
             Globals.AboutForm = new AboutForm();
             Globals.SettingsForm = new SettingsForm();
 
             // Register EventHandler to release resources on exit
             Application.ApplicationExit += ApplicationExit;
 
-            Application.Run(Globals.LoginForm);
+            Application.Run(Globals.QueueForm);
         }
 
         private static void ApplicationExit(object sender, EventArgs e)
