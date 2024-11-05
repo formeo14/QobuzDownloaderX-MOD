@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace QobuzDownloaderX.View
@@ -39,9 +40,9 @@ namespace QobuzDownloaderX.View
             // clearButton
             // 
             clearButton.Dock = DockStyle.Bottom;
-            clearButton.Location = new Point(0, 1087);
+            clearButton.Location = new Point(10, 1077);
             clearButton.Name = "clearButton";
-            clearButton.Size = new Size(780, 69);
+            clearButton.Size = new Size(760, 60);
             clearButton.TabIndex = 2;
             clearButton.Text = "Clear";
             clearButton.Click += ClearButton_Click;
@@ -116,7 +117,7 @@ namespace QobuzDownloaderX.View
         private void ExitLabel_MouseHover(object sender, EventArgs e)
         {
             // Change color or style when hovered
-            exitLabel.BackColor = Color.Red;
+            exitLabel.BackColor =  Color.FromArgb(66, 66, 66);
         }
 
         private void ExitLabel_MouseLeave(object sender, EventArgs e)
@@ -128,8 +129,42 @@ namespace QobuzDownloaderX.View
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            // Draw custom border to simulate window chrome
-            ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle, Color.White, ButtonBorderStyle.Solid);
+            // Draw rounded corners
+            using (GraphicsPath path = GetRoundedRectPath(this.ClientRectangle, 20))
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                this.Region = new Region(path);
+                using (SolidBrush brush = new SolidBrush(Color.FromArgb(33, 33, 33)))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+            }
+        }
+
+        private GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
+        {
+            int diameter = radius;
+            Size size = new Size(diameter, diameter);
+            Rectangle arc = new Rectangle(rect.Location, size);
+            GraphicsPath path = new GraphicsPath();
+
+            // Top left arc  
+            path.AddArc(arc, 180, 90);
+
+            // Top right arc  
+            arc.X = rect.Right - diameter;
+            path.AddArc(arc, 270, 90);
+
+            // Bottom right arc  
+            arc.Y = rect.Bottom - diameter;
+            path.AddArc(arc, 0, 90);
+
+            // Bottom left arc 
+            arc.X = rect.Left;
+            path.AddArc(arc, 90, 90);
+
+            path.CloseFigure();
+            return path;
         }
 
         protected override void OnMouseDown(MouseEventArgs e)

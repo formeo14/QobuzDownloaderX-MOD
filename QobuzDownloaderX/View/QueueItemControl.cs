@@ -1,12 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace QobuzDownloaderX.View
@@ -66,15 +59,15 @@ namespace QobuzDownloaderX.View
 
         private void UpdateImageLoading()
         {
-                if (_loadinGArea.IntersectsWith(this.Bounds))
-                {
-                    LoadImage();
-                    unloadTimer.Stop(); // Stop the timer if the control is visible
-                }
-                else
-                {
-                    unloadTimer.Start(); // Start the timer if the control is not visible
-                }
+            if (_loadinGArea.IntersectsWith(this.Bounds))
+            {
+                LoadImage();
+                unloadTimer.Stop(); // Stop the timer if the control is visible
+            }
+            else
+            {
+                unloadTimer.Start(); // Start the timer if the control is not visible
+            }
         }
 
         bool isSet = false;
